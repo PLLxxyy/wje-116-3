@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import db from '../db';
 import { authMiddleware } from '../middleware/auth';
 import { AuthRequest, Activity } from '../types';
+import { updateActivityAchievements } from '../services/achievementService';
 
 const router = Router();
 
@@ -121,7 +122,9 @@ router.post('/:id/join', authMiddleware, (req: AuthRequest, res: Response) => {
         .run(req.params.id, req.userId, 'going');
     }
 
-    res.json({ message: '报名成功' });
+    const newlyUnlocked = updateActivityAchievements(req.userId!);
+
+    res.json({ message: '报名成功', newly_unlocked: newlyUnlocked });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

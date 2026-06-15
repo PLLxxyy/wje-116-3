@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import PostCard from '../components/PostCard';
 import MedalWall from '../components/MedalWall';
+import AchievementWall from '../components/AchievementWall';
 
 interface UserProfile {
   id: number;
@@ -38,12 +39,26 @@ interface Medal {
   medal_type: string;
 }
 
+interface Achievement {
+  id: number;
+  name: string;
+  description: string;
+  type: 'mileage' | 'activity';
+  target: number;
+  icon: string;
+  reward_points: number;
+  progress: number;
+  unlocked: boolean;
+  unlocked_at: string | null;
+}
+
 export default function Profile() {
   const { id } = useParams();
   const { user: currentUser } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [medals, setMedals] = useState<Medal[]>([]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [bio, setBio] = useState('');
@@ -56,14 +71,16 @@ export default function Profile() {
 
   async function loadData() {
     try {
-      const [userPosts, userProfile, userMedals] = await Promise.all([
+      const [userPosts, userProfile, userMedals, userAchievements] = await Promise.all([
         api.get<Post[]>(`/posts/user/${id}`),
         api.get<UserProfile>(`/auth/users/${id}`),
         api.get<Medal[]>(`/auth/users/${id}/medals`),
+        api.get<Achievement[]>(`/achievements/user/${id}`),
       ]);
       setPosts(userPosts);
       setProfile(userProfile);
       setMedals(userMedals);
+      setAchievements(userAchievements);
       setBio(userProfile.bio || '');
     } catch (err) {
       console.error(err);
@@ -155,6 +172,12 @@ export default function Profile() {
             <div style={{ fontSize: 12, color: '#666' }}>奖牌</div>
           </div>
         </div>
+      </div>
+
+      {/* Achievement wall */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <h3 style={{ marginBottom: 16 }}>🎯 成就进度</h3>
+        <AchievementWall achievements={achievements} />
       </div>
 
       {/* Medal wall */}

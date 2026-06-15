@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import PostCard from '../components/PostCard';
+import AchievementToast from '../components/AchievementToast';
 
 interface Post {
   id: number;
@@ -19,6 +20,14 @@ interface Post {
   created_at: string;
 }
 
+interface UnlockedAchievement {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
+  reward_points: number;
+}
+
 export default function Home() {
   const { user } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -27,6 +36,7 @@ export default function Home() {
   const [distance, setDistance] = useState('');
   const [duration, setDuration] = useState('');
   const [posting, setPosting] = useState(false);
+  const [unlockedAchievements, setUnlockedAchievements] = useState<UnlockedAchievement[]>([]);
 
   useEffect(() => {
     loadPosts();
@@ -47,7 +57,7 @@ export default function Home() {
     if (!newPost.trim()) return;
     setPosting(true);
     try {
-      await api.post('/posts', {
+      const result = await api.post<{ newly_unlocked: UnlockedAchievement[] }>('/posts', {
         content: newPost,
         distance_km: parseFloat(distance) || 0,
         duration_minutes: parseInt(duration) || 0,
@@ -56,6 +66,9 @@ export default function Home() {
       setDistance('');
       setDuration('');
       loadPosts();
+      if (result.newly_unlocked && result.newly_unlocked.length > 0) {
+        setUnlockedAchievements(result.newly_unlocked);
+      }
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -78,6 +91,10 @@ export default function Home() {
 
   return (
     <div>
+      <AchievementToast
+        achievements={unlockedAchievements}
+        onClose={() => setUnlockedAchievements([])}
+      />
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, marginBottom: 8 }}>跑步社区</h1>
         <p style={{ color: '#666' }}>分享你的跑步故事</p>

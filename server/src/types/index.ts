@@ -109,6 +109,27 @@ export interface Medal {
   created_at: string;
 }
 
+export interface Achievement {
+  id: number;
+  name: string;
+  description: string;
+  type: 'mileage' | 'activity';
+  target: number;
+  icon: string;
+  reward_points: number;
+  created_at: string;
+}
+
+export interface UserAchievement {
+  id: number;
+  user_id: number;
+  achievement_id: number;
+  progress: number;
+  unlocked: boolean;
+  unlocked_at: string | null;
+  created_at: string;
+}
+
 export interface AuthRequest extends Request {
   userId?: number;
   userRole?: string;

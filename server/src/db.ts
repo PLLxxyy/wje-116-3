@@ -144,6 +144,30 @@ function initDB() {
       created_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
+
+    CREATE TABLE IF NOT EXISTS achievements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL,
+      type TEXT NOT NULL,
+      target REAL NOT NULL,
+      icon TEXT DEFAULT '',
+      reward_points INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS user_achievements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      achievement_id INTEGER NOT NULL,
+      progress REAL DEFAULT 0,
+      unlocked INTEGER DEFAULT 0,
+      unlocked_at TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (achievement_id) REFERENCES achievements(id),
+      UNIQUE(user_id, achievement_id)
+    );
   `);
 
   seedData();
@@ -218,6 +242,47 @@ function seedData() {
   db.prepare('INSERT INTO medals (user_id, event_name, year, medal_type) VALUES (?, ?, ?, ?)').run(4, '崇礼越野赛', 2025, '50公里越野');
   db.prepare('INSERT INTO medals (user_id, event_name, year, medal_type) VALUES (?, ?, ?, ?)').run(4, '杭州马拉松', 2025, '全马完赛');
   db.prepare('INSERT INTO medals (user_id, event_name, year, medal_type) VALUES (?, ?, ?, ?)').run(4, 'UTMB环勃朗峰', 2024, '100公里越野');
+
+  const insertAchievement = db.prepare(
+    'INSERT INTO achievements (name, description, type, target, icon, reward_points) VALUES (?, ?, ?, ?, ?, ?)'
+  );
+  insertAchievement.run('初出茅庐', '累计跑步达到10公里', 'mileage', 10, '🏃', 10);
+  insertAchievement.run('坚持不懈', '累计跑步达到50公里', 'mileage', 50, '💪', 20);
+  insertAchievement.run('半马达人', '累计跑步达到100公里', 'mileage', 100, '🏅', 30);
+  insertAchievement.run('全马选手', '累计跑步达到500公里', 'mileage', 500, '🥇', 50);
+  insertAchievement.run('跑者精英', '累计跑步达到1000公里', 'mileage', 1000, '🏆', 100);
+  insertAchievement.run('马拉松传奇', '累计跑步达到2000公里', 'mileage', 2000, '👑', 200);
+
+  insertAchievement.run('初次参与', '参加1次跑团活动', 'activity', 1, '🤝', 10);
+  insertAchievement.run('活跃分子', '参加5次跑团活动', 'activity', 5, '🎉', 20);
+  insertAchievement.run('团队骨干', '参加10次跑团活动', 'activity', 10, '⭐', 30);
+  insertAchievement.run('活动达人', '参加20次跑团活动', 'activity', 20, '🌟', 50);
+  insertAchievement.run('核心成员', '参加50次跑团活动', 'activity', 50, '💎', 100);
+
+  const users = db.prepare('SELECT id, total_km FROM users').all() as { id: number; total_km: number }[];
+  const achievements = db.prepare('SELECT * FROM achievements').all() as any[];
+
+  const insertUserAchievement = db.prepare(
+    'INSERT OR IGNORE INTO user_achievements (user_id, achievement_id, progress, unlocked, unlocked_at) VALUES (?, ?, ?, ?, ?)'
+  );
+
+  for (const user of users) {
+    const activityCount = db.prepare(
+      'SELECT COUNT(*) as cnt FROM activity_participants WHERE user_id = ? AND status = ?'
+    ).get(user.id, 'going') as { cnt: number };
+
+    for (const ach of achievements) {
+      let progress = 0;
+      if (ach.type === 'mileage') {
+        progress = user.total_km;
+      } else if (ach.type === 'activity') {
+        progress = activityCount.cnt;
+      }
+      const unlocked = progress >= ach.target ? 1 : 0;
+      const unlockedAt = unlocked ? new Date().toISOString() : null;
+      insertUserAchievement.run(user.id, ach.id, progress, unlocked, unlockedAt);
+    }
+  }
 }
 
 initDB();

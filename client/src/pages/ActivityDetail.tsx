@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import AchievementToast from '../components/AchievementToast';
 
 interface ActivityData {
   id: number;
@@ -22,6 +23,14 @@ interface ActivityData {
   posts: Array<any>;
 }
 
+interface UnlockedAchievement {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
+  reward_points: number;
+}
+
 export default function ActivityDetail() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -31,6 +40,7 @@ export default function ActivityDetail() {
   const [distance, setDistance] = useState('');
   const [duration, setDuration] = useState('');
   const [commentTexts, setCommentTexts] = useState<Record<number, string>>({});
+  const [unlockedAchievements, setUnlockedAchievements] = useState<UnlockedAchievement[]>([]);
 
   useEffect(() => {
     loadActivity();
@@ -49,8 +59,11 @@ export default function ActivityDetail() {
 
   async function handleJoin() {
     try {
-      await api.post(`/activities/${id}/join`);
+      const result = await api.post<{ newly_unlocked: UnlockedAchievement[] }>(`/activities/${id}/join`);
       loadActivity();
+      if (result.newly_unlocked && result.newly_unlocked.length > 0) {
+        setUnlockedAchievements(result.newly_unlocked);
+      }
     } catch (err: any) {
       alert(err.message);
     }
@@ -68,7 +81,7 @@ export default function ActivityDetail() {
   async function handlePostResult() {
     if (!postContent.trim()) return;
     try {
-      await api.post('/posts', {
+      const result = await api.post<{ newly_unlocked: UnlockedAchievement[] }>('/posts', {
         content: postContent,
         activity_id: parseInt(id!),
         distance_km: parseFloat(distance) || 0,
@@ -78,6 +91,9 @@ export default function ActivityDetail() {
       setDistance('');
       setDuration('');
       loadActivity();
+      if (result.newly_unlocked && result.newly_unlocked.length > 0) {
+        setUnlockedAchievements(result.newly_unlocked);
+      }
     } catch (err: any) {
       alert(err.message);
     }
@@ -116,6 +132,10 @@ export default function ActivityDetail() {
 
   return (
     <div>
+      <AchievementToast
+        achievements={unlockedAchievements}
+        onClose={() => setUnlockedAchievements([])}
+      />
       {/* Activity header */}
       <div className="card" style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>

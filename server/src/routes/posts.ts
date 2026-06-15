@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import db from '../db';
 import { authMiddleware } from '../middleware/auth';
 import { AuthRequest } from '../types';
+import { updateMileageAchievements } from '../services/achievementService';
 
 const router = Router();
 
@@ -64,12 +65,13 @@ router.post('/', authMiddleware, (req: AuthRequest, res: Response) => {
       'INSERT INTO posts (user_id, activity_id, content, distance_km, duration_minutes, image_url) VALUES (?, ?, ?, ?, ?, ?)'
     ).run(req.userId, activity_id || null, content, distance_km || 0, duration_minutes || 0, image_url || '');
 
-    // Update user total_km
+    let newlyUnlocked: any[] = [];
     if (distance_km && distance_km > 0) {
       db.prepare('UPDATE users SET total_km = total_km + ? WHERE id = ?').run(distance_km, req.userId);
+      newlyUnlocked = updateMileageAchievements(req.userId!);
     }
 
-    res.json({ id: result.lastInsertRowid, message: '发布成功' });
+    res.json({ id: result.lastInsertRowid, message: '发布成功', newly_unlocked: newlyUnlocked });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
